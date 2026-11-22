@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đại Hải Trình – Trò chơi Khởi động</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap');
+:root{
+  --ocean1:#0a1628;--ocean2:#0d2137;--ocean3:#132e4a;
+  --wave1:#1a4a7a;--wave2:#1565a0;
+  --gold:#ffd700;--gold2:#ffaa00;
+  --team1:#ff4757;--team1b:#ff6b81;
+  --team2:#1e90ff;--team2b:#70b8ff;
+  --island:#2d8a4e;--sand:#f4d35e;
+  --treasure:#ff6348;
+  --text:#fff;--dim:rgba(255,255,255,0.6);
+}
+html,body{height:100%;overflow:hidden;font-family:'Baloo 2',sans-serif;background:var(--ocean1);color:var(--text);}
+body{display:flex;flex-direction:column;}
+
+/* ===== HEADER ===== */
+header{display:flex;align-items:center;justify-content:space-between;padding:6px 24px;background:linear-gradient(135deg,#0d1b2a,#1b2838);border-bottom:2px solid var(--gold);z-index:10;flex-shrink:0;}
+header h1{font-size:28px;color:var(--gold);text-shadow:0 2px 8px rgba(255,215,0,0.4);letter-spacing:1px;}
+.timer-box{display:flex;align-items:center;gap:12px;}
+#timer{font-size:42px;font-weight:800;color:var(--gold);min-width:120px;text-align:center;text-shadow:0 0 20px rgba(255,215,0,0.5);}
+#timer.warning{color:#ff4757;animation:pulse 0.5s infinite alternate;}
+@keyframes pulse{from{opacity:1;transform:scale(1);}to{opacity:0.7;transform:scale(1.05);}}
+.btn{padding:8px 20px;border:none;border-radius:8px;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;transition:all 0.2s;}
+.btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.3);}
+.btn:active{transform:translateY(0);}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#1a1a2e;}
+.btn-pause{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);}
+.btn-pause.active{background:var(--gold);color:#1a1a2e;}
+
+/* ===== MAP AREA ===== */
+.game-area{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden;background:linear-gradient(180deg,var(--ocean1) 0%,var(--ocean2) 40%,var(--ocean3) 100%);min-height:0;padding-bottom:100px;}
+
+/* Stars */
+.stars{position:absolute;top:0;left:0;right:0;height:60%;pointer-events:none;}
+.star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;animation:twinkle 3s infinite alternate;}
+@keyframes twinkle{0%{opacity:0.3;}100%{opacity:1;}}
+
+/* Waves */
+.waves{position:absolute;bottom:0;left:0;right:0;height:60px;pointer-events:none;z-index:5;}
+.wave{position:absolute;bottom:0;width:200%;height:40px;background:repeat-x;animation:wave-move 8s linear infinite;}
+.wave1{background:linear-gradient(90deg,transparent 0%,rgba(26,74,122,0.4) 25%,transparent 50%);animation-duration:8s;bottom:20px;}
+.wave2{background:linear-gradient(90deg,transparent 0%,rgba(21,101,160,0.3) 25%,transparent 50%);animation-duration:12s;animation-direction:reverse;bottom:0;}
+@keyframes wave-move{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+
+/* Map tracks */
+.map-container{flex:1;display:flex;flex-direction:column;justify-content:center;padding:8px 40px;gap:8px;position:relative;z-index:2;min-height:0;}
+
+.track{display:flex;align-items:center;gap:0;position:relative;padding:4px 0;}
+.track-label{position:absolute;left:-5px;top:-18px;font-size:14px;font-weight:700;padding:2px 12px;border-radius:12px;letter-spacing:1px;}
+.track.team1 .track-label{background:var(--team1);color:#fff;}
+.track.team2 .track-label{background:var(--team2);color:#fff;}
+
+.track-path{flex:1;display:flex;align-items:center;justify-content:space-between;position:relative;height:64px;}
+.track-path::before{content:'';position:absolute;top:50%;left:30px;right:30px;height:4px;background:repeating-linear-gradient(90deg,rgba(255,255,255,0.3) 0,rgba(255,255,255,0.3) 10px,transparent 10px,transparent 20px);transform:translateY(-50%);}
+
+/* Checkpoints (islands) */
+.checkpoint{position:relative;z-index:3;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;transition:all 0.3s;flex-shrink:0;}
+.checkpoint.start{background:linear-gradient(135deg,#4a5568,#2d3748);border:3px solid #718096;}
+.checkpoint.island{background:linear-gradient(135deg,var(--island),#1e6f3e);border:3px solid var(--sand);box-shadow:0 0 15px rgba(45,138,78,0.3);}
+.checkpoint.island.active{box-shadow:0 0 25px rgba(244,211,94,0.6);border-color:var(--gold);animation:glow 1.5s infinite alternate;}
+.checkpoint.island.passed{opacity:0.5;border-color:#666;}
+.checkpoint.finish{background:linear-gradient(135deg,var(--treasure),#e55039);border:3px solid var(--gold);box-shadow:0 0 20px rgba(255,99,72,0.4);}
+.checkpoint.finish.reached{animation:treasure-glow 0.8s infinite alternate;}
+@keyframes glow{from{box-shadow:0 0 15px rgba(244,211,94,0.3);}to{box-shadow:0 0 30px rgba(244,211,94,0.7);}}
+@keyframes treasure-glow{from{transform:scale(1);box-shadow:0 0 20px rgba(255,215,0,0.4);}to{transform:scale(1.1);box-shadow:0 0 40px rgba(255,215,0,0.8);}}
+.cp-label{position:absolute;bottom:-16px;font-size:10px;white-space:nowrap;color:var(--dim);font-weight:500;}
+
+/* Ships */
+.ship{position:absolute;z-index:4;font-size:36px;transition:left 1s cubic-bezier(0.4,0,0.2,1);filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5));animation:bob 2s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+.ship.team1-ship{top:-5px;}
+.ship.team2-ship{top:-5px;}
+
+/* Divider */
+.divider{text-align:center;font-size:14px;color:var(--dim);letter-spacing:8px;padding:5px 0;}
+
+/* ===== BOTTOM PANEL ===== */
+.bottom-panel{display:flex;align-items:stretch;padding:8px 24px;gap:12px;background:linear-gradient(0deg,#0a0f1a,#0d1b2a);border-top:1px solid rgba(255,255,255,0.1);position:fixed;bottom:0;left:0;right:0;z-index:10;}
+.team-panel{flex:1;border-radius:12px;padding:12px 16px;display:flex;flex-direction:column;gap:6px;}
+.team-panel.t1{background:rgba(255,71,87,0.12);border:1px solid rgba(255,71,87,0.3);}
+.team-panel.t2{background:rgba(30,144,255,0.12);border:1px solid rgba(30,144,255,0.3);}
+.team-panel h3{font-size:16px;display:flex;align-items:center;gap:8px;}
+.team-panel.t1 h3{color:var(--team1b);}
+.team-panel.t2 h3{color:var(--team2b);}
+.btn-answer{width:100%;padding:10px;border-radius:8px;font-size:18px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;letter-spacing:1px;}
+.btn-answer:disabled{opacity:0.3;cursor:not-allowed;transform:none !important;}
+.btn-answer.t1{background:linear-gradient(135deg,var(--team1),#e84057);color:#fff;}
+.btn-answer.t2{background:linear-gradient(135deg,var(--team2),#1878d0);color:#fff;}
+.btn-answer:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 4px 15px rgba(0,0,0,0.3);}
+.clue-slots{display:flex;gap:6px;margin-top:4px;}
+.clue-slot{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s;}
+.clue-slot.empty{background:rgba(255,255,255,0.08);border:1px dashed rgba(255,255,255,0.2);}
+.clue-slot.filled{border:1px solid var(--gold);animation:clue-pop 0.5s ease;}
+.clue-slot.filled.t1{background:rgba(255,71,87,0.3);}
+.clue-slot.filled.t2{background:rgba(30,144,255,0.3);}
+@keyframes clue-pop{0%{transform:scale(0);}60%{transform:scale(1.3);}100%{transform:scale(1);}}
+.center-panel{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:160px;}
+.btn-treasure{padding:12px 24px;border-radius:12px;font-size:16px;font-weight:800;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#1a1a2e;border:none;cursor:pointer;display:none;animation:treasure-pulse 1s infinite alternate;}
+@keyframes treasure-pulse{from{box-shadow:0 0 10px rgba(255,215,0,0.3);}to{box-shadow:0 0 30px rgba(255,215,0,0.7);}}
+
+/* ===== MODALS ===== */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.75);z-index:100;display:none;align-items:center;justify-content:center;animation:fade-in 0.3s;}
+.modal-overlay.show{display:flex;}
+@keyframes fade-in{from{opacity:0;}to{opacity:1;}}
+.modal{background:linear-gradient(135deg,#1a2a3a,#0d1b2a);border-radius:20px;padding:30px;max-width:700px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:2px solid rgba(255,215,0,0.3);animation:modal-in 0.4s cubic-bezier(0.34,1.56,0.64,1);}
+@keyframes modal-in{from{transform:scale(0.8) translateY(30px);opacity:0;}to{transform:scale(1) translateY(0);opacity:1;}}
+.modal h2{font-size:24px;text-align:center;margin-bottom:6px;color:var(--gold);}
+.modal .subtitle{text-align:center;color:var(--dim);font-size:14px;margin-bottom:16px;}
+.modal .question-text{font-size:18px;line-height:1.6;padding:16px 20px;background:rgba(255,255,255,0.05);border-radius:12px;margin-bottom:20px;border-left:4px solid var(--gold);}
+.modal .answer-hint{font-size:14px;color:var(--dim);text-align:center;margin-bottom:16px;font-style:italic;}
+.modal-actions{display:flex;gap:12px;justify-content:center;}
+.btn-correct{padding:12px 36px;border-radius:10px;font-size:18px;font-weight:700;background:linear-gradient(135deg,#2ed573,#1abc54);color:#fff;border:none;cursor:pointer;transition:all 0.2s;}
+.btn-wrong{padding:12px 36px;border-radius:10px;font-size:18px;font-weight:700;background:linear-gradient(135deg,#ff4757,#e84057);color:#fff;border:none;cursor:pointer;transition:all 0.2s;}
+.btn-correct:hover,.btn-wrong:hover{transform:translateY(-2px);box-shadow:0 4px 15px rgba(0,0,0,0.3);}
+
+/* Clue reveal */
+.clue-reveal{text-align:center;padding:16px;margin-top:16px;border-radius:12px;background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,170,0,0.1));border:1px solid var(--gold);display:none;}
+.clue-reveal h3{color:var(--gold);font-size:20px;margin-bottom:4px;}
+.clue-reveal p{font-size:22px;font-weight:800;letter-spacing:1px;}
+.btn-next{margin-top:12px;padding:10px 30px;border-radius:8px;font-size:16px;font-weight:700;background:var(--gold);color:#1a1a2e;border:none;cursor:pointer;}
+
+/* Wheel */
+.wheel-container{display:flex;flex-direction:column;align-items:center;gap:16px;}
+.wheel-wrapper{position:relative;width:280px;height:280px;}
+.wheel-pointer{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:30px;z-index:5;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));}
+#wheelCanvas{width:280px;height:280px;border-radius:50%;box-shadow:0 0 30px rgba(255,215,0,0.3);}
+.btn-spin{padding:14px 40px;border-radius:12px;font-size:20px;font-weight:800;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#1a1a2e;border:none;cursor:pointer;letter-spacing:2px;}
+.btn-spin:disabled{opacity:0.4;cursor:not-allowed;}
+.punishment-result{text-align:center;margin-top:12px;display:none;}
+.punishment-result .emoji{font-size:48px;margin-bottom:8px;}
+.punishment-result .label{font-size:22px;font-weight:800;color:var(--gold);}
+.punishment-result .desc{font-size:14px;color:var(--dim);margin-top:4px;}
+
+/* Treasure modal */
+.treasure-content{text-align:center;}
+.treasure-content .big-emoji{font-size:72px;margin:12px 0;}
+.treasure-content .clue-assembly{display:flex;flex-direction:column;gap:8px;margin:16px 0;padding:16px;background:rgba(255,255,255,0.05);border-radius:12px;}
+.treasure-content .clue-line{font-size:16px;padding:6px 12px;border-radius:8px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.2);}
+.treasure-content .clue-line .emoji{margin-right:8px;}
+.treasure-content .answer-reveal{font-size:28px;font-weight:800;color:var(--gold);margin-top:16px;padding:16px;border:3px solid var(--gold);border-radius:16px;background:rgba(255,215,0,0.1);animation:treasure-glow 0.8s infinite alternate;}
+
+/* Victory */
+.victory-content{text-align:center;}
+.victory-content .trophy{font-size:80px;margin:10px 0;}
+.victory-content .winner{font-size:32px;font-weight:800;margin:8px 0;}
+.victory-content .winner.t1{color:var(--team1b);}
+.victory-content .winner.t2{color:var(--team2b);}
+
+/* Start screen */
+.start-screen{position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#0a1628,#0d2137);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;}
+.start-screen.hidden{display:none;}
+.start-screen h1{font-size:52px;color:var(--gold);text-shadow:0 4px 20px rgba(255,215,0,0.4);}
+.start-screen .subtitle{font-size:18px;color:var(--dim);}
+.start-screen .ship-art{font-size:80px;animation:bob 3s ease-in-out infinite;}
+.start-screen .btn-start{padding:16px 48px;font-size:24px;font-weight:800;border-radius:16px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#1a1a2e;border:none;cursor:pointer;letter-spacing:3px;animation:treasure-pulse 1.5s infinite alternate;}
+.start-screen .rules{max-width:500px;text-align:center;font-size:14px;color:var(--dim);line-height:1.6;margin-top:8px;}
+
+/* Confetti */
+.confetti{position:fixed;top:-10px;width:10px;height:10px;z-index:300;animation:confetti-fall linear forwards;pointer-events:none;}
+@keyframes confetti-fall{to{top:110vh;transform:rotate(720deg);}}
+
+/* Responsive */
+@media(max-height:700px){
+  header h1{font-size:22px;}
+  #timer{font-size:32px;}
+  .checkpoint{width:55px;height:55px;font-size:22px;}
+  .ship{font-size:28px;}
+  .modal{padding:20px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== START SCREEN ===== -->
+<div class="start-screen" id="startScreen">
+  <div class="ship-art">⛵</div>
+  <h1>⚓ ĐẠI HẢI TRÌNH ⚓</h1>
+  <p class="subtitle">Trò chơi Khởi động – Hóa học 10</p>
+  <button class="btn-start" onclick="startGame()">KHỞI HÀNH!</button>
+  <p class="rules">Hai đội đua tàu qua 4 chặng. Mỗi chặng cần trả lời đúng 1 câu hỏi để vượt qua.<br>Trả lời sai → quay vòng quay hình phạt!<br>Đội nào đến đích trước trong 4 phút sẽ chiến thắng.<br>Tại đích, hãy ghép 4 mảnh gợi ý để tìm ra KHO BÁU!</p>
+</div>
+
+<!-- ===== HEADER ===== -->
+<header>
+  <h1>⚓ ĐẠI HẢI TRÌNH</h1>
+  <div class="timer-box">
+    <span id="timer">04:00</span>
+    <button class="btn btn-pause" id="pauseBtn" onclick="togglePause()">⏸</button>
+  </div>
+</header>
+
+<!-- ===== GAME AREA ===== -->
+<div class="game-area">
+  <div class="stars" id="stars"></div>
+
+  <div class="map-container">
+    <!-- Team 1 Track -->
+    <div class="track team1">
+      <span class="track-label">ĐỘI 1 🔴</span>
+      <div class="track-path" id="track1">
+        <div class="checkpoint start" data-cp="0"><span>🚢</span><span class="cp-label">Xuất phát</span></div>
+        <div class="checkpoint island" data-cp="1"><span>🏝️</span><span class="cp-label">Đảo Lịch sử</span></div>
+        <div class="checkpoint island" data-cp="2"><span>🏝️</span><span class="cp-label">Đảo Vật chất</span></div>
+        <div class="checkpoint island" data-cp="3"><span>🏝️</span><span class="cp-label">Đảo Quy luật</span></div>
+        <div class="checkpoint island" data-cp="4"><span>🏝️</span><span class="cp-label">Đảo Thời gian</span></div>
+        <div class="checkpoint finish" data-cp="5"><span>💰</span><span class="cp-label">Kho báu!</span></div>
+        <div class="ship team1-ship" id="ship1">⛵</div>
+      </div>
+    </div>
+
+    <div class="divider">~ ~ ~ ~ 🌊 B I Ể N &nbsp; C Ả 🌊 ~ ~ ~ ~</div>
+
+    <!-- Team 2 Track -->
+    <div class="track team2">
+      <span class="track-label">ĐỘI 2 🔵</span>
+      <div class="track-path" id="track2">
+        <div class="checkpoint start" data-cp="0"><span>🚢</span><span class="cp-label">Xuất phát</span></div>
+        <div class="checkpoint island" data-cp="1"><span>🏝️</span><span class="cp-label">Đảo Lịch sử</span></div>
+        <div class="checkpoint island" data-cp="2"><span>🏝️</span><span class="cp-label">Đảo Vật chất</span></div>
+        <div class="checkpoint island" data-cp="3"><span>🏝️</span><span class="cp-label">Đảo Quy luật</span></div>
+        <div class="checkpoint island" data-cp="4"><span>🏝️</span><span class="cp-label">Đảo Thời gian</span></div>
+        <div class="checkpoint finish" data-cp="5"><span>💰</span><span class="cp-label">Kho báu!</span></div>
+        <div class="ship team2-ship" id="ship2">⛵</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="waves">
+    <div class="wave wave1"></div>
+    <div class="wave wave2"></div>
+  </div>
+</div>
+
+<!-- ===== BOTTOM PANEL ===== -->
+<div class="bottom-panel">
+  <div class="team-panel t1">
+    <h3>🔴 ĐỘI 1</h3>
+    <button class="btn-answer t1" id="btn1" onclick="teamAnswer(1)" disabled>TRẢ LỜI CHẶNG 1</button>
+    <div class="clue-slots" id="clues1">
+      <div class="clue-slot empty" id="c1-1"></div>
+      <div class="clue-slot empty" id="c1-2"></div>
+      <div class="clue-slot empty" id="c1-3"></div>
+      <div class="clue-slot empty" id="c1-4"></div>
+    </div>
+  </div>
+  <div class="center-panel">
+    <button class="btn-treasure" id="btnTreasure" onclick="showTreasure()">🗝️ GIẢI MÃ KHO BÁU</button>
+    <span style="font-size:12px;color:var(--dim);" id="statusText">Nhấn KHỞI HÀNH để bắt đầu</span>
+  </div>
+  <div class="team-panel t2">
+    <h3>🔵 ĐỘI 2</h3>
+    <button class="btn-answer t2" id="btn2" onclick="teamAnswer(2)" disabled>TRẢ LỜI CHẶNG 1</button>
+    <div class="clue-slots" id="clues2">
+      <div class="clue-slot empty" id="c2-1"></div>
+      <div class="clue-slot empty" id="c2-2"></div>
+      <div class="clue-slot empty" id="c2-3"></div>
+      <div class="clue-slot empty" id="c2-4"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== QUESTION MODAL ===== -->
+<div class="modal-overlay" id="questionModal">
+  <div class="modal">
+    <h2 id="qTitle"></h2>
+    <p class="subtitle" id="qSubtitle"></p>
+    <div class="question-text" id="qText"></div>
+    <p class="answer-hint" id="qHint"></p>
+    <div class="modal-actions" id="qActions">
+      <button class="btn-correct" onclick="judgeAnswer(true)">✓ ĐÚNG</button>
+      <button class="btn-wrong" onclick="judgeAnswer(false)">✗ SAI</button>
+    </div>
+    <div class="clue-reveal" id="clueReveal">
+      <h3>🧩 Mảnh gợi ý thu được!</h3>
+      <p id="clueText"></p>
+      <button class="btn-next" onclick="closeQuestion()">TIẾP TỤC ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== WHEEL MODAL ===== -->
+<div class="modal-overlay" id="wheelModal">
+  <div class="modal">
+    <h2>🎡 VÒNG QUAY HÌNH PHẠT</h2>
+    <p class="subtitle" id="wheelTeamLabel"></p>
+    <div class="wheel-container">
+      <div class="wheel-wrapper">
+        <div class="wheel-pointer">🔽</div>
+        <canvas id="wheelCanvas" width="560" height="560"></canvas>
+      </div>
+      <button class="btn-spin" id="btnSpin" onclick="spinWheel()">QUAY!</button>
+      <div class="punishment-result" id="punishResult">
+        <div class="emoji" id="punishEmoji"></div>
+        <div class="label" id="punishLabel"></div>
+        <div class="desc" id="punishDesc"></div>
+        <button class="btn-next" onclick="closePunishment()" style="margin-top:12px;">CHẤP NHẬN ▶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TREASURE MODAL ===== -->
+<div class="modal-overlay" id="treasureModal">
+  <div class="modal">
+    <div class="treasure-content">
+      <h2>🗺️ GIẢI MÃ KHO BÁU</h2>
+      <p class="subtitle">Ghép 4 mảnh gợi ý để tìm ra chủ đề bài học hôm nay!</p>
+      <div class="clue-assembly" id="clueAssembly"></div>
+      <div class="answer-reveal" id="answerReveal" style="display:none;">
+        🏆 BẢNG TUẦN HOÀN<br>CÁC NGUYÊN TỐ HÓA HỌC 🏆
+      </div>
+      <button class="btn-next" id="btnRevealAnswer" onclick="revealTreasureAnswer()" style="margin-top:16px;">🔓 MỞ KHO BÁU</button>
+      <button class="btn-next" id="btnCloseTreasure" onclick="closeTreasure()" style="margin-top:8px;display:none;">ĐÓNG</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== VICTORY MODAL ===== -->
+<div class="modal-overlay" id="victoryModal">
+  <div class="modal">
+    <div class="victory-content">
+      <div class="trophy">🏆</div>
+      <h2>CHIẾN THẮNG!</h2>
+      <p class="winner" id="winnerText"></p>
+      <p class="subtitle" id="victorySubtitle"></p>
+      <button class="btn-next" onclick="closeVictory()" style="margin-top:16px;">TIẾP TỤC ▶</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== GAME DATA =====
+const QUESTIONS = [
+  {
+    island: "Đảo Lịch sử",
+    emoji: "🏛️",
+    title: "Chặng 1: Đảo Lịch sử",
+    subtitle: "Câu chuyện về một giấc mơ thiên tài",
+    text: "Năm 1869, một giáo sư hóa học người Nga đang miệt mài viết sách giáo khoa thì thiếp đi vì kiệt sức. Trong giấc mơ, ông thấy tất cả các nguyên tố hóa học tự động sắp xếp thành các hàng và cột một cách hoàn hảo. Tỉnh dậy, ông lập tức ghi lại và tạo ra một công trình vĩ đại còn dùng đến ngày nay.\n\nNhà khoa học thiên tài đó tên là gì?",
+    hint: "Gợi ý: Ông là người Nga, sống ở thế kỷ 19, có bộ râu dài rất nổi tiếng.",
+    answer: "Dmitri Ivanovich Mendeleev (Men-đê-lê-ép)",
+    clueEmoji: "🧑‍🔬",
+    clueText: "DMITRI IVANOVICH MENDELEEV"
+  },
+  {
+    island: "Đảo Vật chất",
+    emoji: "🧱",
+    title: "Chặng 2: Đảo Vật chất",
+    subtitle: "Những viên gạch xây nên vũ trụ",
+    text: "Vàng (Au), Bạc (Ag), Đồng (Cu), Sắt (Fe), Oxy (O), Carbon (C), Neon (Ne)... Mỗi loại có tính chất riêng biệt nhưng đều có một điểm chung: chúng là những chất cơ bản nhất, KHÔNG THỂ tách thành chất đơn giản hơn bằng phương pháp hóa học.\n\nHiện tại, khoa học đã phát hiện chính xác bao nhiêu loại chất cơ bản như vậy?",
+    hint: "Gợi ý: Con số này nằm giữa 100 và 120.",
+    answer: "118 (nguyên tố hóa học)",
+    clueEmoji: "🧱",
+    clueText: "118 NGUYÊN TỐ HÓA HỌC"
+  },
+  {
+    island: "Đảo Quy luật",
+    emoji: "🔄",
+    title: "Chặng 3: Đảo Quy luật",
+    subtitle: "Bí mật của sự lặp lại",
+    text: "Mặt Trời mọc rồi lặn, rồi lại mọc. Mùa xuân qua rồi mùa xuân lại đến. Trong âm nhạc, nốt Do lên cao dần qua Re, Mi, Fa, Sol, La, Si – rồi lại quay về Do ở quãng tám cao hơn.\n\nTự nhiên luôn vận động theo những vòng lặp kỳ diệu. Trong tiếng Hán-Việt, có một từ gồm 2 chữ dùng để chỉ hiện tượng các sự vật biến đổi rồi quay trở lại trạng thái ban đầu, cứ lặp đi lặp lại như vậy mãi. Từ đó là gì?",
+    hint: "Gợi ý: Chữ đầu có nghĩa là 'một vòng', chữ sau có nghĩa là 'trở lại'.",
+    answer: "Tuần hoàn",
+    clueEmoji: "🔄",
+    clueText: "TUẦN HOÀN"
+  },
+  {
+    island: "Đảo Thời gian",
+    emoji: "⏳",
+    title: "Chặng 4: Đảo Thời gian",
+    subtitle: "150 năm trước đã xảy ra chuyện gì?",
+    text: "Năm 2019, Liên Hợp Quốc (UNESCO) chọn là 'Năm Quốc tế' để kỉ niệm tròn 150 năm ngày ra đời một công trình khoa học vĩ đại. Công trình này giống như một 'tấm bản đồ' của thế giới vật chất, giúp nhà khoa học dự đoán tính chất của các chất chưa biết.\n\nVậy công trình đó được tạo ra vào năm bao nhiêu?",
+    hint: "Gợi ý: 2019 trừ 150 = ?",
+    answer: "Năm 1869",
+    clueEmoji: "📋",
+    clueText: "BẢN ĐỒ 7 HÀNG 18 CỘT (1869)"
+  }
+];
+
+const PUNISHMENTS = [
+  { emoji: "🎤", label: "HÁT MỘT BÀI!", desc: "Cả đội cùng hát 1 đoạn bài hát bất kỳ" },
+  { emoji: "💃", label: "MÚA MỘT BÀI!", desc: "Cả đội cùng múa 1 điệu trong 15 giây" },
+  { emoji: "🕺", label: "NHẢY MỘT BÀI!", desc: "Cả đội cùng nhảy 1 điệu trong 15 giây" },
+  { emoji: "⬅️", label: "LÙI 1 BƯỚC!", desc: "Tàu lùi về 1 chặng trước đó" }
+];
+
+// ===== GAME STATE =====
+let gameStarted = false;
+let paused = false;
+let timeLeft = 240; // 4 minutes in seconds
+let timerInterval = null;
+let currentTeam = 0; // which team is answering (1 or 2)
+let teamProgress = [0, 0]; // checkpoint index for each team (0=start)
+let teamClues = [[], []]; // collected clues
+let gameOver = false;
+let winner = 0;
+
+// ===== INIT =====
+function init() {
+  createStars();
+  drawWheel(0);
+  updateShipPositions();
+  updateButtons();
+}
+
+function createStars() {
+  const container = document.getElementById('stars');
+  for (let i = 0; i < 50; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.animationDelay = Math.random() * 3 + 's';
+    star.style.animationDuration = (2 + Math.random() * 3) + 's';
+    container.appendChild(star);
+  }
+}
+
+// ===== TIMER =====
+function startTimer() {
+  timerInterval = setInterval(() => {
+    if (!paused && !gameOver) {
+      timeLeft--;
+      updateTimerDisplay();
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        endGame(0); // time's up, determine winner by progress
+      }
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timeLeft / 60);
+  const s = timeLeft % 60;
+  const el = document.getElementById('timer');
+  el.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  el.classList.toggle('warning', timeLeft <= 30);
+}
+
+function togglePause() {
+  paused = !paused;
+  const btn = document.getElementById('pauseBtn');
+  btn.textContent = paused ? '▶' : '⏸';
+  btn.classList.toggle('active', paused);
+  document.getElementById('statusText').textContent = paused ? '⏸ TẠM DỪNG' : 'Đang chơi...';
+  document.getElementById('btn1').disabled = paused || gameOver;
+  document.getElementById('btn2').disabled = paused || gameOver;
+  if (!paused) updateButtons();
+}
+
+// ===== GAME FLOW =====
+function startGame() {
+  document.getElementById('startScreen').classList.add('hidden');
+  gameStarted = true;
+  startTimer();
+  updateButtons();
+  document.getElementById('statusText').textContent = 'Đang chơi...';
+}
+
+function teamAnswer(team) {
+  if (paused || gameOver) return;
+  currentTeam = team;
+  const cp = teamProgress[team - 1]; // current checkpoint (0-based, next question is cp+1)
+  if (cp >= 4) return; // already at finish
+
+  const q = QUESTIONS[cp];
+  document.getElementById('qTitle').textContent = q.title;
+  document.getElementById('qSubtitle').innerHTML = q.subtitle + ' — <b style="color:' + (team===1?'var(--team1b)':'var(--team2b)') + '">Đội ' + team + '</b>';
+  document.getElementById('qText').innerHTML = q.text.replace(/\n/g, '<br>');
+  document.getElementById('qHint').textContent = q.hint;
+  document.getElementById('qActions').style.display = 'flex';
+  document.getElementById('clueReveal').style.display = 'none';
+  showModal('questionModal');
+
+  // Pause timer while answering? No, keep it running for pressure!
+}
+
+function judgeAnswer(correct) {
+  if (correct) {
+    // Advance ship
+    teamProgress[currentTeam - 1]++;
+    const cp = teamProgress[currentTeam - 1];
+
+    // Add clue
+    const q = QUESTIONS[cp - 1];
+    teamClues[currentTeam - 1].push(q);
+    updateClueSlot(currentTeam, cp);
+
+    // Show clue
+    document.getElementById('qActions').style.display = 'none';
+    document.getElementById('clueReveal').style.display = 'block';
+    document.getElementById('clueText').textContent = q.clueEmoji + ' ' + q.clueText;
+
+    // Animate ship
+    updateShipPositions();
+    updateIslands();
+
+    // Check win
+    if (cp >= 4) {
+      // Team reached checkpoint 4, move to finish (5)
+      teamProgress[currentTeam - 1] = 5;
+      setTimeout(() => updateShipPositions(), 100);
+    }
+  } else {
+    // Wrong answer → punishment wheel
+    hideModal('questionModal');
+    setTimeout(() => {
+      document.getElementById('wheelTeamLabel').innerHTML = 'Đội ' + currentTeam + ' trả lời sai! Hãy quay vòng quay...';
+      document.getElementById('punishResult').style.display = 'none';
+      document.getElementById('btnSpin').disabled = false;
+      document.getElementById('btnSpin').style.display = '';
+      showModal('wheelModal');
+    }, 300);
+  }
+}
+
+function closeQuestion() {
+  hideModal('questionModal');
+  const cp = teamProgress[currentTeam - 1];
+  if (cp >= 5) {
+    // This team just won!
+    setTimeout(() => endGame(currentTeam), 500);
+  } else {
+    updateButtons();
+  }
+}
+
+// ===== SHIP POSITIONS =====
+function updateShipPositions() {
+  for (let t = 1; t <= 2; t++) {
+    const ship = document.getElementById('ship' + t);
+    const track = document.getElementById('track' + t);
+    const checkpoints = track.querySelectorAll('.checkpoint');
+    const cp = Math.min(teamProgress[t-1], 5);
+    const target = checkpoints[cp];
+    if (target) {
+      const trackRect = track.getBoundingClientRect();
+      const cpRect = target.getBoundingClientRect();
+      const left = cpRect.left - trackRect.left + cpRect.width / 2 - 18;
+      ship.style.left = left + 'px';
+    }
+  }
+}
+
+function updateIslands() {
+  for (let t = 1; t <= 2; t++) {
+    const track = document.getElementById('track' + t);
+    const checkpoints = track.querySelectorAll('.checkpoint.island');
+    const cp = teamProgress[t-1];
+    checkpoints.forEach((el, i) => {
+      el.classList.remove('active', 'passed');
+      if (i < cp) el.classList.add('passed');
+      else if (i === cp) el.classList.add('active');
+    });
+    const finish = track.querySelector('.checkpoint.finish');
+    if (cp >= 5) finish.classList.add('reached');
+  }
+}
+
+function updateClueSlot(team, checkpoint) {
+  const slot = document.getElementById('c' + team + '-' + checkpoint);
+  if (slot) {
+    slot.classList.remove('empty');
+    slot.classList.add('filled', 't' + team);
+    slot.textContent = QUESTIONS[checkpoint - 1].clueEmoji;
+  }
+}
+
+function updateButtons() {
+  const btn1 = document.getElementById('btn1');
+  const btn2 = document.getElementById('btn2');
+
+  if (!gameStarted || paused || gameOver) {
+    btn1.disabled = true;
+    btn2.disabled = true;
+    return;
+  }
+
+  const cp1 = teamProgress[0];
+  const cp2 = teamProgress[1];
+
+  if (cp1 < 4) {
+    btn1.disabled = false;
+    btn1.textContent = 'TRẢ LỜI CHẶNG ' + (cp1 + 1);
+  } else {
+    btn1.disabled = true;
+    btn1.textContent = cp1 >= 5 ? '🏆 ĐÃ ĐẾN ĐÍCH!' : 'TRẢ LỜI CHẶNG 4';
+    if (cp1 === 4) { // need to advance to finish
+      teamProgress[0] = 5;
+      updateShipPositions();
+      btn1.textContent = '🏆 ĐÃ ĐẾN ĐÍCH!';
+    }
+  }
+
+  if (cp2 < 4) {
+    btn2.disabled = false;
+    btn2.textContent = 'TRẢ LỜI CHẶNG ' + (cp2 + 1);
+  } else {
+    btn2.disabled = true;
+    btn2.textContent = cp2 >= 5 ? '🏆 ĐÃ ĐẾN ĐÍCH!' : 'TRẢ LỜI CHẶNG 4';
+    if (cp2 === 4) {
+      teamProgress[1] = 5;
+      updateShipPositions();
+      btn2.textContent = '🏆 ĐÃ ĐẾN ĐÍCH!';
+    }
+  }
+
+  // Show treasure button when any team has collected all 4 clues
+  if (teamClues[0].length >= 4 || teamClues[1].length >= 4) {
+    document.getElementById('btnTreasure').style.display = 'block';
+  }
+}
+
+// ===== PUNISHMENT WHEEL =====
+const WHEEL_COLORS = ['#ff4757', '#ffd700', '#1e90ff', '#2ed573'];
+let wheelAngle = 0;
+let spinning = false;
+
+function drawWheel(angle) {
+  const canvas = document.getElementById('wheelCanvas');
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const r = cx - 10;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw segments
+  for (let i = 0; i < 4; i++) {
+    const startAngle = (i * Math.PI / 2) + angle;
+    const endAngle = ((i + 1) * Math.PI / 2) + angle;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = WHEEL_COLORS[i];
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Label
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(startAngle + Math.PI / 4);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 20px "Baloo 2", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(PUNISHMENTS[i].emoji, r * 0.55, 6);
+    ctx.font = 'bold 14px "Baloo 2", sans-serif';
+    ctx.fillText(PUNISHMENTS[i].label.replace('!',''), r * 0.55, 26);
+    ctx.restore();
+  }
+
+  // Center circle
+  ctx.beginPath();
+  ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fill();
+  ctx.strokeStyle = var_gold();
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 20px "Baloo 2", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🎡', cx, cy);
+}
+
+function var_gold() { return '#ffd700'; }
+
+function spinWheel() {
+  if (spinning) return;
+  spinning = true;
+  document.getElementById('btnSpin').disabled = true;
+
+  const result = Math.floor(Math.random() * 4);
+  // Calculate target angle: the pointer is at top (270deg = -PI/2)
+  // Segment i occupies from i*90 to (i+1)*90 degrees
+  // To land on segment `result`, we need the middle of that segment at top
+  // Middle of segment = result * 90 + 45 degrees
+  // Top is at -90 degrees (or 270)
+  // So final angle = -(result * 90 + 45 + 90) degrees in radians, plus several full rotations
+  const spins = 5 + Math.random() * 3; // 5-8 full spins
+  const targetDeg = -(result * 90 + 45) + 90; // offset so segment faces up
+  const totalDeg = spins * 360 + targetDeg;
+  const totalRad = totalDeg * Math.PI / 180;
+
+  const duration = 3000;
+  const startAngle = wheelAngle;
+  const startTime = Date.now();
+
+  function animate() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    // Ease out cubic
+    const ease = 1 - Math.pow(1 - progress, 3);
+    wheelAngle = startAngle + totalRad * ease;
+    drawWheel(wheelAngle);
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      spinning = false;
+      showPunishment(result);
+    }
+  }
+  animate();
+}
+
+function showPunishment(index) {
+  const p = PUNISHMENTS[index];
+  document.getElementById('punishEmoji').textContent = p.emoji;
+  document.getElementById('punishLabel').textContent = p.label;
+  document.getElementById('punishDesc').textContent = p.desc;
+  document.getElementById('punishResult').style.display = 'block';
+  document.getElementById('btnSpin').style.display = 'none';
+
+  // If "Lùi 1 bước", actually move ship back
+  if (index === 3) {
+    const cp = teamProgress[currentTeam - 1];
+    if (cp > 0) {
+      teamProgress[currentTeam - 1]--;
+      // Remove last clue if they had one for this checkpoint
+      if (teamClues[currentTeam - 1].length > teamProgress[currentTeam - 1]) {
+        teamClues[currentTeam - 1].pop();
+        // Clear the clue slot
+        const slotNum = teamClues[currentTeam - 1].length + 1;
+        const slot = document.getElementById('c' + currentTeam + '-' + slotNum);
+        if (slot) {
+          slot.classList.remove('filled', 't1', 't2');
+          slot.classList.add('empty');
+          slot.textContent = '';
+        }
+      }
+      updateShipPositions();
+      updateIslands();
+    }
+  }
+}
+
+function closePunishment() {
+  hideModal('wheelModal');
+  updateButtons();
+}
+
+// ===== TREASURE =====
+function showTreasure() {
+  const assembly = document.getElementById('clueAssembly');
+  assembly.innerHTML = '';
+
+  // Show clues from the team that collected all 4 (or whichever has more)
+  const clues = teamClues[0].length >= teamClues[1].length ? teamClues[0] : teamClues[1];
+
+  clues.forEach((q, i) => {
+    const div = document.createElement('div');
+    div.className = 'clue-line';
+    div.innerHTML = '<span class="emoji">' + q.clueEmoji + '</span> Mảnh ' + (i+1) + ': <b>' + q.clueText + '</b>';
+    assembly.appendChild(div);
+  });
+
+  if (clues.length < 4) {
+    const div = document.createElement('div');
+    div.className = 'clue-line';
+    div.innerHTML = '❓ Còn ' + (4 - clues.length) + ' mảnh chưa thu thập...';
+    assembly.appendChild(div);
+  }
+
+  document.getElementById('answerReveal').style.display = 'none';
+  document.getElementById('btnRevealAnswer').style.display = '';
+  document.getElementById('btnCloseTreasure').style.display = 'none';
+  showModal('treasureModal');
+}
+
+function revealTreasureAnswer() {
+  document.getElementById('answerReveal').style.display = 'block';
+  document.getElementById('btnRevealAnswer').style.display = 'none';
+  document.getElementById('btnCloseTreasure').style.display = '';
+  spawnConfetti();
+}
+
+function closeTreasure() {
+  hideModal('treasureModal');
+}
+
+// ===== END GAME =====
+function endGame(winnerTeam) {
+  gameOver = true;
+  clearInterval(timerInterval);
+
+  if (winnerTeam === 0) {
+    // Time's up – whoever is further ahead wins
+    if (teamProgress[0] > teamProgress[1]) winnerTeam = 1;
+    else if (teamProgress[1] > teamProgress[0]) winnerTeam = 2;
+    else winnerTeam = 0; // tie
+  }
+
+  winner = winnerTeam;
+
+  const winnerEl = document.getElementById('winnerText');
+  const subEl = document.getElementById('victorySubtitle');
+
+  if (winnerTeam === 0) {
+    winnerEl.textContent = 'HÒA!';
+    winnerEl.className = 'winner';
+    subEl.textContent = 'Hai đội ngang tài ngang sức!';
+  } else {
+    winnerEl.textContent = 'ĐỘI ' + winnerTeam + ' CHIẾN THẮNG!';
+    winnerEl.className = 'winner t' + winnerTeam;
+    subEl.textContent = 'Đội ' + winnerTeam + ' đã về đích trước! Hãy giải mã kho báu!';
+  }
+
+  setTimeout(() => {
+    showModal('victoryModal');
+    spawnConfetti();
+  }, 800);
+
+  document.getElementById('btnTreasure').style.display = 'block';
+  updateButtons();
+}
+
+function closeVictory() {
+  hideModal('victoryModal');
+}
+
+// ===== MODAL HELPERS =====
+function showModal(id) {
+  document.getElementById(id).classList.add('show');
+}
+function hideModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// ===== CONFETTI =====
+function spawnConfetti() {
+  const colors = ['#ff4757','#ffd700','#1e90ff','#2ed573','#ff6348','#a55eea','#ff9ff3'];
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.background = colors[Math.floor(Math.random() * colors.length)];
+    el.style.width = (6 + Math.random() * 8) + 'px';
+    el.style.height = (6 + Math.random() * 8) + 'px';
+    el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    el.style.animationDuration = (2 + Math.random() * 3) + 's';
+    el.style.animationDelay = Math.random() * 2 + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 6000);
+  }
+}
+
+// ===== RESIZE HANDLER =====
+window.addEventListener('resize', () => {
+  setTimeout(updateShipPositions, 100);
+});
+
+// Init
+init();
+setTimeout(updateShipPositions, 200);
+</script>
+</body>
+</html>
